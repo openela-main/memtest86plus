@@ -1,0 +1,83 @@
+Install memtest86+ into your grub menu by the following command:
+
+# memtest-setup
+
+If you use GRUB 2 (the default) it will install 20_memtest86+ GRUB template
+into /etc/grub.d and you will also need to regenerate GRUB 2 config by running:
+
+# grub2-mkconfig -o /boot/grub2/grub.cfg
+
+This is not done automatically because it could overwrite any custom changes
+in /boot/grub2/grub.cfg.
+
+By default ELF version of memtest86+ is installed, which should work on most of
+the systems. In case it doesn't work for you, you can try to install the non-ELF
+version by running:
+
+# memtest-setup -b
+
+Or with GRUB 2 you can switch between ELF and non-ELF versions of memtest86+
+by using INSTALL_ELF variable from /etc/memtest86+.conf. Setting it to '1'
+will instruct GRUB 2 to install ELF version of memtest86+ and setting it
+to '0' will instruct GRUB2 to install non-ELF version. If the variable
+is empty or unset, the ELF version is installed (it's due to backward
+compatibility). For the change to take effect you need to regenerate your
+GRUB 2 config by running:
+
+# grub2-mkconfig -o /boot/grub2/grub.cfg
+
+The non-ELF version is known to cause various problems and it may not work on
+several systems. That's why the ELF version is installed by default.
+
+In case of problems you can also try to install the non-ELF version of
+memtest86+ on floppy disk or USB flash disk and boot the memtest86+ from it.
+The following command installs the memtest86+ on floppy disk
+(WARNING: all data previosly stored on the disk will be lost):
+
+# dd if=/boot/memtest86+-VERSION of=/dev/fd0
+
+For USB flash disk the command is the same, just change the 'of' device
+appropriately (usually USB flash disk is /dev/sdb, but double check that
+the device string matches your USB flash disk before you run the command,
+wrong device string may cause significat harm, e.g. it can destroy content
+of your system or data disks).
+
+The memtest86+ now supports some command line parameters:
+  console= - serial console can be used for memtest86+ control/display,
+             example of usage:
+               console=ttyS0
+               console=ttyS0,115200
+               console=ttyS1,115200n8
+             Only ttyS0 and ttyS1 are supported.
+
+  btrace   - enable boot trace.
+
+  maxcpus= - limit number of CPUs to use.
+
+  onepass  - run one pass and exit if there are no errors.
+
+  tstlist= - setup a list of tests to run.
+
+  cpumask= - set a CPU (hexadecimal) mask to select CPU's to use for testing.
+
+You can add memtest86+ command line parameters into grub like you are
+used with kernel command line parameters, e.g.:
+ kernel /memtest86+-VERSION console=ttyS0
+
+Unfortunately this is currently supported only with non-ELF memtest86+ image.
+You cannot use the command line parameters with the ELF image, because the
+command line handling is currently not supported by grub for ELF images.
+
+If you need to use serial console with ELF image, you need to recompile
+memtest86+ and explicitly enable/configure serial line. In such case
+edit the config.h in memtest86+ sources the following way:
+
+#define SERIAL_CONSOLE_DEFAULT 1
+#define SERIAL_TTY 0
+#define SERIAL_BAUD_RATE 9600
+
+and recompile memtest86+. This will explicitly enable serial console and
+set it to use ttyS0,9600.
+
+NOTE: explicitly enabled serial console may significantly slow down the memory
+testing.

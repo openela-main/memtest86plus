@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# package name
+PNAME="memtest86+"
+
+# binary image
+BNAME="memtest86+"
+
+# ELF image
+ELFNAME="elf-$BNAME"
+
+# executable image to be installed
+ENAME="$ELFNAME"
+
+# GRUB 2 template
+G2TEMPL="20_memtest86+"
+
+# GRUB 2 environment file
+CONF_FILE="/etc/memtest86+.conf"
+
+# GRUB legacy configuration file
+GRUBCONF="/boot/grub/grub.conf"
+
+# GRUB2 configuration file
+GRUB2CFG="/boot/grub2/grub.cfg"
+
+# GRUB2 environment variable to control image type
+CONF_VAR="INSTALL_ELF"
+
+# whether to install ELF image
+ELF=1
+
+if [ "$1" = "--help" -o "$1" = "-h" ]; then
+    cat <<:EOF
+usage: memtest-setup [OPTIONS]
+
+This utility installs Memtest86+ into your GRUB boot loader menu.
+It supports both GRUB 2 and GRUB Legacy (i.e. GRUB 0.9x).
+In case of GRUB 2 it installs GRUB 2 template into /etc/grub.d and GRUB 2
+config needs to be regenerated manually by running:
+
+grub2-mkconfig -o $GRUB2CFG
+
+This is not done automatically because it could  overwrite any custom changes
+in /boot/grub2/grub.cfg.
+
+OPTIONS:
+  -e , --elf     installs ELF image (the default)
+  -b , --bin     installs binary image (non-ELF)
+  -h , --help    show this help
+
+:EOF
+    exit 0
+fi
+
+[ "$1" = "-b" -o "$1" = "--bin" ] && ELF=0
+[ "$1" = "-e" -o "$1" = "--elf" ] && ELF=1
+
+if [ "$ELF" = 1 ]; then
+  # BANNER_SUFFIX needs to be simultaneously changed also in grub2 template
+  BANNER_SUFFIX=
+  ENAME="$ELFNAME"
+else
+  ELF=0
+  BANNER_SUFIX="(non-ELF)"
+  ENAME="$BNAME"
+fi
+
+if [ -d /sys/firmware/efi ]; then
+    echo "ERROR: memtest86+ does not support EFI platforms."
+    exit 254
+fi
+
+if [ ! -r "$GRUBCONF" -a ! -r "$GRUB2CFG" ]; then
+   echo "ERROR: unable to read grub configuration file. Do you have enough permissions?"
+   echo "Try to run as root."
+   exit 249
+fi
+
+if [ -f "$GRUB2CFG" ]; then
+    echo "GRUB 2 detected, installing template..."
+    if [ ! -d /etc/grub.d ]; then
+        echo "ERROR: unable to find /etc/grub.d"
+        exit 253
+    fi
+    if [ ! -r /usr/share/memtest86+/$G2TEMPL ]; then
+        echo "ERROR: unable to find GRUB 2 template."
+        exit 251
+    fi
+    if ! cp /usr/share/memtest86+/$G2TEMPL /etc/grub.d; then
+        echo "ERROR: unable to copy GRUB 2 template, do you have write permission to"
+        echo "/etc/grub.d?"
+        # EX_IOERR
+        exit 74
+    fi
+    if [ ! -w "$CONF_FILE" ]
+    then
+        echo "ERROR: file '$CONF_FILE' is not writable."
+        exit 250
+    fi
+    chmod a+x /etc/grub.d/$G2TEMPL
+    echo "GRUB 2 template installed."
+    echo "Do not forget to regenerate your grub.cfg by:"
+    echo "  # grub2-mkconfig -o $GRUB2CFG"
+else
+    MTVERSION=`rpm -q --qf '%{version}' $PNAME`
+    MTPATH="/boot/$ENAME-$MTVERSION"
+
+    if [ ! -r "$GRUBCONF" ]; then
+        echo "ERROR: $GRUBCONF not found or not readable."
+        exit 252
+    fi
+
+    MENT=`cat /boot/grub/grub.conf | grep "$ENAME-$MTVERSION"` &> /dev/null
+    if [ "$MENT" != "" ]; then
+        echo "$MTPATH is already configured. Exiting..."
+        exit 0
+    fi
+
+    if [ ! -f $MTPATH ]; then
+        echo "ERROR: $MTPATH does not exist."
+        exit 255
+    fi
+
+    /sbin/new-memtest-pkg --install $MTVERSION --banner="Memtest86+${BANNER_SUFFIX}" --kernel-name="$ENAME"
+    RETVAL="$?"
+
+    if [ "$RETVAL" != "0" ]; then
+        echo "ERROR: grubby failed to configure your bootloader for $MTPATH."
+        exit $RETVAL
+    else
+        [ "$ELF" = 1 ] && sed -i -e"s,kernel \(/boot\)\?/$ENAME,kernel --type=netbsd \1/$ENAME," /boot/grub/grub.conf
+        sed -i -e"s,/$ENAME-$MTVERSION.*,/$ENAME-$MTVERSION," /boot/grub/grub.conf
+    fi
+fi
+
+# update/add configuration variable to the configuration file
+if grep -q "^\s*$CONF_VAR\s*=" "$CONF_FILE"
+then
+    sed -i "/^\s*$CONF_VAR\s*=/ s/\(\s*$CONF_VAR\s*=[\"']\?\)[^\"']*\([\"']\?\s*\)/\1${ELF}\2/g" "$CONF_FILE"
+else
+    echo "$CONF_VAR=\"$ELF\"" >> "$CONF_FILE"
+fi
+
+echo "Setup complete."
