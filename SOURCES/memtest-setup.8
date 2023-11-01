@@ -1,0 +1,32 @@
+.TH MEMTEST-SETUP 8 2018-05-17 Memtest86+ "Memtest86+ Manual"
+
+.SH NAME
+memtest-setup \- install Memtest86+ into GRUB\ 2 boot loader menu
+
+.SH SYNOPSIS
+.BR memtest-setup " [" \-b | \-e | \-h ]
+.br
+.BR memtest-setup " [" \-\-bin | \-\-elf | \-\-help ]
+
+.SH DESCRIPTION
+.RB "The " memtest-setup " utility installs Memtest86+ into GRUB\ 2 boot"
+loader menu.
+.RI "It installs GRUB\ 2 template into " /etc/grub.d " directory."
+.PP
+GRUB\ 2 configuration file needs to be regenerated manually by running:
+.IP
+.RI "grub2-mkconfig -o " /boot/grub2/grub.cfg
+.PP
+This is not done automatically because it could overwrite any custom
+changes in GRUB\ 2 configuration file.
+
+.SH OPTIONS
+.TP
+.BR \-b ", " \-\-bin
+Install a binary Memtest86+ image.
+.TP
+.BR \-e ", " \-\-elf
+Install an ELF Memtest86+ image (the default).
+.TP
+.BR \-h ", " \-\-help
+Print a help message and exit.
