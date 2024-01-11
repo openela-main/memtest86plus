@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# GRUB 2 template
+G2TEMPL="20_memtest86+"
+
+# GRUB 2 environment file
+CONF_FILE="/etc/memtest86+.conf"
+
+# GRUB2 configuration file
+GRUB2CFG="/boot/grub2/grub.cfg"
+
+# GRUB2 environment variable to control image type
+CONF_VAR="INSTALL_ELF"
+
+# whether to install ELF image
+ELF=1
+
+if [ "$1" = "--help" -o "$1" = "-h" ]; then
+    cat <<:EOF
+Usage:
+  memtest-setup [-b|-e|-h]
+  memtest-setup [--bin|--elf|--help]
+
+The memtest-setup utility installs Memtest86+ into GRUB 2 boot loader menu.
+It installs GRUB 2 template into /etc/grub.d directory.
+
+GRUB 2 configuration file needs to be regenerated manually by running:
+
+  grub2-mkconfig -o $GRUB2CFG
+
+This is not done automatically because it could overwrite any custom changes
+in GRUB 2 configuration file.
+
+Options:
+  -b, --bin     Install a binary Memtest86+ image.
+  -e, --elf     Install an ELF Memtest86+ image (the default).
+  -h, --help    Print a help message and exit.
+
+:EOF
+    exit 0
+fi
+
+[ "$1" = "-b" -o "$1" = "--bin" ] && ELF=0
+[ "$1" = "-e" -o "$1" = "--elf" ] && ELF=1
+
+if [ -d /sys/firmware/efi ]; then
+    echo "ERROR: memtest86+ does not support EFI platforms."
+    exit 254
+fi
+
+if [ ! -r "$GRUB2CFG" ]; then
+   echo "ERROR: unable to read grub configuration file. Do you have enough permissions?"
+   echo "Try to run as root."
+   exit 249
+fi
+
+# install GRUB 2 template
+if [ ! -d /etc/grub.d ]; then
+    echo "ERROR: unable to find /etc/grub.d"
+    exit 253
+fi
+if [ ! -r /usr/share/memtest86+/$G2TEMPL ]; then
+    echo "ERROR: unable to find GRUB 2 template."
+    exit 251
+fi
+if ! cp /usr/share/memtest86+/$G2TEMPL /etc/grub.d; then
+    echo "ERROR: unable to copy GRUB 2 template, do you have write permission to"
+    echo "/etc/grub.d?"
+    # EX_IOERR
+    exit 74
+fi
+if [ ! -w "$CONF_FILE" ]
+then
+    echo "ERROR: file '$CONF_FILE' is not writable."
+    exit 250
+fi
+chmod a+x /etc/grub.d/$G2TEMPL
+echo "GRUB 2 template installed."
+echo "Do not forget to regenerate your grub.cfg by:"
+echo "  # grub2-mkconfig -o $GRUB2CFG"
+
+# update/add configuration variable to the configuration file
+if grep -q "^\s*$CONF_VAR\s*=" "$CONF_FILE"
+then
+    sed -i "/^\s*$CONF_VAR\s*=/ s/\(\s*$CONF_VAR\s*=[\"']\?\)[^\"']*\([\"']\?\s*\)/\1${ELF}\2/g" "$CONF_FILE"
+else
+    echo "$CONF_VAR=\"$ELF\"" >> "$CONF_FILE"
+fi
+
+echo "Setup complete."
