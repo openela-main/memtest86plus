@@ -1,0 +1,38 @@
+.TH "MEMTEST\-SETUP" "8" "Aug 26, 2014" "memtest-setup" "Memtest86+ User Manual"
+.nh
+.ad l
+.SH "NAME"
+memtest\-setup \- Install Memtest86+ into your GRUB boot loader menu
+.SH "SYNOPSIS"
+.HP \w'\fBmemtest\-setup\fR\ 'u
+.B memtest\-setup
+.RI [ OPTIONS ]
+.SH "DESCRIPTION"
+.PP
+\fBmemtest\-setup\fR
+installs Memtest86+ into your GRUB boot loader menu. It supports both GRUB\ 2
+and GRUB Legacy (i.e. GRUB 0.9x). In case of GRUB\ 2 it installs GRUB\ 2 template
+into \fI/etc/grub.d\fR and GRUB\ 2 config needs to be regenerated manually by
+running \fBgrub2-mkconfig\ -o\ \fI/boot/grub2/grub.cfg\fR under root.
+This is not done automatically because it could overwrite any custom changes in
+\fI/boot/grub2/grub.cfg\fR.
+.SH "OPTIONS"
+.SS
+.TP
+.BR \-h ", " \-\-help
+Shows help.
+.SH "AUTHOR"
+.PP
+\fBJaroslav Škarvada\fR <\&jskarvad@redhat\&.com\&>
+.RS 4
+Manpage author\&.
+.RE
+.SH "COPYRIGHT"
+.BR
+Copyright \(co 2014 Jaroslav Škarvada
+.BR
+.PP
+Permission is granted to copy, distribute and/or modify this document under the terms of the
+GNU
+General Public License, Version 2 or (at your option) any later version published by the Free Software Foundation\&.
+.SP
